@@ -2,17 +2,16 @@ package testMQOrderedDoubleLinkedList;
 
 import org.junit.Test;
 
-
-
+//import common.Rnd;
 import MaQiao.MaQiaoOrderedDoubleLinkedList.IoDLL;
 import MaQiao.MaQiaoOrderedDoubleLinkedList.MQOrderedDoubleLinkedList;
 
 public class test {
 
-	@SuppressWarnings("unused")
+	@SuppressWarnings({ "deprecation" })
 	@Test
 	public void testuser() {
-		MQOrderedDoubleLinkedList odll=new MQOrderedDoubleLinkedList();
+		//MQOrderedDoubleLinkedList odll=new MQOrderedDoubleLinkedList();
 //		for(int i=10;i<16;i++){
 //			int ii=Rnd.getRndInt(10, 28);
 //			//user u=new user("user"+i,(long)(100+i));
@@ -28,8 +27,14 @@ public class test {
 		odll2.put(new user("user105",105));
 		odll2.put(new user("user102",102));
 		odll2.put(new user("user10333",103));
-		odll2.Ordering();
+		//odll2.Ordering();
 		odll2.toString();
+		odll2.putFast(new user("user121",121));
+		odll2.putFast(new user("user120",120));
+		odll2.putFast(new user("user119",119));
+		odll2.OrderingReset();
+		odll2.toString();
+		//odll2.toString();
 		//odll.Ordering();
 		//odll.toString();
 	}

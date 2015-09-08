@@ -24,13 +24,15 @@ public final class MQOrderedDoubleLinkedList {
 	/**
 	 * 链表缓存(把链表截多少段)
 	 */
-	private transient final Entry[] cacheEntry = new Entry[Consts.cacheLen - 1];
-
+	private transient Entry[] cacheEntry = new Entry[Consts.cacheLen - 1];
+	public MQOrderedDoubleLinkedList(){
+		
+	}
 	/**
 	 * 转序
 	 * @return boolean
 	 */
-	public final boolean Ordering() {
+	public final boolean turnOrdering() {
 		if (entryStart == null || entryEnd == null || entryStart == entryEnd) return false;
 		locked();
 		try {
@@ -48,16 +50,31 @@ public final class MQOrderedDoubleLinkedList {
 		} finally {
 			unLocked();
 		}
-
 	}
 
+	/**
+	 * 添加单元，如发现同标记则覆盖<br/>
+	 * @param value IoDLL
+	 * @return boolean
+	 */
 	public boolean put(final IoDLL value) {
+		if (value == null) return false;
+		return put(value, true);
+	}
+
+	/**
+	 * 添加单元，手动决定是否覆盖<br/>
+	 * @param value IoDLL
+	 * @param isCover boolean
+	 * @return boolean
+	 */
+	public boolean put(final IoDLL value, final boolean isCover) {
 		if (value == null) return false;
 		locked();
 		try {
 			Entry f = null;
-			Entry EntryDown = getEntryDown(entryStart, entryEnd, value);
-			if ((f = searchEntry(value, EntryDown)) != null) {
+			Entry EntryDown = EntryGetDown(entryStart, entryEnd, value);
+			if ((f = EntrySearch(value, EntryDown)) != null && isCover) {
 				f.value = value;
 				System.out.println("insert into......");
 				return true;
@@ -75,6 +92,27 @@ public final class MQOrderedDoubleLinkedList {
 	}
 
 	/**
+	 * 添加单元，直接在链表后面加入单元<br/>
+	 * @param value IoDLL
+	 * @return boolean
+	 */
+	@Deprecated
+	public boolean putFast(final IoDLL value) {
+		if (value == null) return false;
+		locked();
+		try {
+			/* 未找到则 添加链表*/
+			addEntry(null, value);
+			//showHeadEnd();
+			toString();
+			System.out.println("/////////////////////////////////////////////////////////////////////////////////////");
+			return true;
+		} finally {
+			unLocked();
+		}
+	}
+
+	/**
 	 * 判断接口是否存在，以标识数为标准
 	 * @param value IoDLL
 	 * @param eStart Entry
@@ -84,70 +122,16 @@ public final class MQOrderedDoubleLinkedList {
 	public boolean contains(final IoDLL value) {
 		locked();
 		try {
-			return (searchEntry(value, entryStart, entryEnd) != null);
+			return (EntrySearch(value, entryStart, entryEnd) != null);
 		} finally {
 			unLocked();
 		}
 	}
 
 	/**
-	 * 判断接口是否存在，以标识数为标准
-	 * @param value IoDLL
-	 * @param entryStart Entry
-	 * @param entryEnd Entry
-	 * @return boolean
-	 */
-	static final boolean contains(final IoDLL value, final Entry entryStart, final Entry entryEnd) {
-		return (searchEntry(value, entryStart, entryEnd) != null);
-	}
-
-	/**
-	 * 按对象查找位置<br/>
-	 * @param value IoDLL
-	 * @param entryStart Entry
-	 * @param entryEnd Entry
-	 * @return Entry
-	 */
-	private static final Entry searchEntry(final IoDLL value, final Entry entryStart, final Entry entryEnd) {
-		for (Entry p = entryStart; p != null && p.value != null && p.value.identityCode() <= value.identityCode(); p = p.next) {
-			if (p.value != null && (p.value == value || p.value.equals(value))) return p;
-			if (p == entryEnd) break;
-		}
-		return null;
-	}
-
-	private static final Entry searchEntry(final IoDLL value, final Entry entryStart) {
-		for (Entry p = entryStart; p != null && p.value != null && p.value.identityCode() <= value.identityCode(); p = p.forward) {
-			if (p.value != null && (p.value == value || p.value.equals(value))) return p;
-		}
-		return null;
-	}
-
-	/**
-	 * 按对象查找位置<br/>
-	 * 允许倒序查找<br/>
-	 * @param value IoDLL
-	 * @param entryStart Entry
-	 * @param entryEnd Entry
-	 * @return Entry
-	 */
-	@SuppressWarnings("unused")
-	@Deprecated
-	private static final Entry searchEntryDeprecated(final IoDLL value, final Entry entryStart, final Entry entryEnd) {
-		boolean ordering = true;
-		if (entryStart == null) return null;
-		if (entryStart.value.identityCode() > (entryEnd == null ? value.identityCode() : entryEnd.value.identityCode())) ordering = false;
-		for (Entry p = ordering ? entryStart : entryEnd; p != null && p.value != null && p.value.identityCode() <= value.identityCode(); p = ordering ? p.next : p.forward) {
-			if (p.value != null && (p.value == value || p.value.equals(value))) return p;
-			if (p == (ordering ? entryEnd : entryStart)) break;
-		}
-		return null;
-	}
-
-	/**
 	 * 添加链表，有顺序
-	 * @param EntryDown
-	 * @param value
+	 * @param EntryDown Entry
+	 * @param value IoDLL
 	 */
 	private final void addEntry(final Entry EntryDown, final IoDLL value) {
 		final Entry e = new Entry(value);
@@ -163,7 +147,6 @@ public final class MQOrderedDoubleLinkedList {
 			e.next = null;
 			entryEnd.next = e;
 			entryEnd = e;
-
 		} else {
 			/* 如果有下限值，则放入下限对象的前面(默认为从小到大的排序)*/
 			if (entryStart == EntryDown) entryStart = e;
@@ -173,6 +156,50 @@ public final class MQOrderedDoubleLinkedList {
 			EntryDown.forward = e;
 		}
 		entryCount++;
+	}
+
+	/**
+	 * 把乱序的链表顺序重置，按从小到大重新整理<br/>
+	 * @return boolean
+	 */
+	public final boolean OrderingReset() {
+		if (entryStart == null) return false;
+		locked();
+		try {
+			final MQOrderedDoubleLinkedList MQdll = new MQOrderedDoubleLinkedList();
+			for (Entry p = entryStart; p != null; p = p.next)
+				MQdll.put(p.value);
+			ShallowCopy(MQdll, this);
+			return true;
+		} finally {
+			unLocked();
+		}
+	}
+
+	/**
+	 * 浅复制链表<br/>
+	 * @return MQOrderedDoubleLinkedList
+	 */
+	@Override
+	public final MQOrderedDoubleLinkedList clone() {
+		final MQOrderedDoubleLinkedList f = new MQOrderedDoubleLinkedList();
+		f.entryStart = this.entryStart;
+		f.entryEnd = this.entryEnd;
+		f.entryCount = this.entryCount;
+		f.cacheEntry = this.cacheEntry;
+		return f;
+	}
+
+	/**
+	 * 浅复制链表<br/>
+	 * @param e MQOrderedDoubleLinkedList
+	 * @param f MQOrderedDoubleLinkedList
+	 */
+	private final void ShallowCopy(final MQOrderedDoubleLinkedList e, final MQOrderedDoubleLinkedList f) {
+		f.entryStart = e.entryStart;
+		f.entryEnd = e.entryEnd;
+		f.entryCount = e.entryCount;
+		f.cacheEntry = e.cacheEntry;
 	}
 
 	/**
@@ -188,6 +215,67 @@ public final class MQOrderedDoubleLinkedList {
 		}
 	}
 
+	/*
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+				Static静态方法
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 
+	 */
+
+	/**
+	 * 判断接口是否存在，以标识数为标准
+	 * @param value IoDLL
+	 * @param entryStart Entry
+	 * @param entryEnd Entry
+	 * @return boolean
+	 */
+	static final boolean EntryContains(final IoDLL value, final Entry entryStart, final Entry entryEnd) {
+		return (EntrySearch(value, entryStart, entryEnd) != null);
+	}
+
+	/**
+	 * 按对象查找位置<br/>
+	 * @param value IoDLL
+	 * @param start Entry
+	 * @param end Entry
+	 * @return Entry
+	 */
+	static final Entry EntrySearch(final IoDLL value, final Entry start, final Entry end) {
+		for (Entry p = start; p != null && p.value != null && p.value.identityCode() <= value.identityCode(); p = p.next) {
+			if (p.value != null && (p.value == value || p.value.equals(value))) return p;
+			if (p == end) break;
+		}
+		return null;
+	}
+
+	static final Entry EntrySearch(final IoDLL value, final Entry entryStart) {
+		for (Entry p = entryStart; p != null && p.value != null && p.value.identityCode() <= value.identityCode(); p = p.forward) {
+			if (p.value != null && (p.value == value || p.value.equals(value))) return p;
+		}
+		return null;
+	}
+
+	/**
+	 * 按对象查找位置<br/>
+	 * 允许倒序查找<br/>
+	 * @param value IoDLL
+	 * @param entryStart Entry
+	 * @param entryEnd Entry
+	 * @return Entry
+	 */
+	@Deprecated
+	static final Entry searchEntryDeprecated(final IoDLL value, final Entry entryStart, final Entry entryEnd) {
+		boolean ordering = true;
+		if (entryStart == null) return null;
+		if (entryStart.value.identityCode() > (entryEnd == null ? value.identityCode() : entryEnd.value.identityCode())) ordering = false;
+		for (Entry p = ordering ? entryStart : entryEnd; p != null && p.value != null && p.value.identityCode() <= value.identityCode(); p = ordering ? p.next : p.forward) {
+			if (p.value != null && (p.value == value || p.value.equals(value))) return p;
+			if (p == (ordering ? entryEnd : entryStart)) break;
+		}
+		return null;
+	}
+
 	/**
 	 * 在指定锁表中间段，找到某个标记的下限(包含本标记)<br/>
 	 * 允许倒序查找<br/>
@@ -196,7 +284,7 @@ public final class MQOrderedDoubleLinkedList {
 	 * @param value IoDLL
 	 * @return Entry
 	 */
-	private static final Entry getEntryDown(final Entry entryStart, final Entry entryEnd, final IoDLL value) {
+	static final Entry EntryGetDown(final Entry entryStart, final Entry entryEnd, final IoDLL value) {
 		if (value == null) new StringIndexOutOfBoundsException("IoDLL is not null!!!");
 		if (entryStart == null) return null;
 		if (entryStart == entryEnd) return entryStart.value.identityCode() > value.identityCode() ? entryStart : null;
@@ -208,8 +296,29 @@ public final class MQOrderedDoubleLinkedList {
 		return null;
 	}
 
+	/**
+	 * 在指定锁表中间段，找到某个标记的下限(包含本标记)<br/>
+	 * 允许倒序查找<br/>
+	 * @param entryStart Entry
+	 * @param entryEnd Entry
+	 * @param e Entry
+	 * @return Entry
+	 */
+	static final Entry EntryGetDown(final Entry entryStart, final Entry entryEnd, final Entry e) {
+		if (e == null) new StringIndexOutOfBoundsException("Entry is not null!!!");
+		if (e.value == null) new StringIndexOutOfBoundsException("IoDLL is not null!!!");
+		if (entryStart == null) return null;
+		if (entryStart == entryEnd) return entryStart.value.identityCode() > e.value.identityCode() ? entryStart : null;
+		for (Entry p = entryStart; p != null; p = p.next) {
+			/* 记录  第一个大于这个值的位置 */
+			if (p.value.identityCode() >= e.value.identityCode()) return p;
+			if (p == entryEnd) break;
+		}
+		return null;
+	}
+
 	public final int isOrdering() {
-		return isOrdering(entryStart, entryEnd);
+		return EntryOrderingIs(entryStart, entryEnd);
 	}
 
 	/**
@@ -221,23 +330,98 @@ public final class MQOrderedDoubleLinkedList {
 	 * @param end Entry
 	 * @return int
 	 */
-	static final int isOrdering(final Entry start, final Entry end) {
-		boolean boolPold = false;//boolP = false, 
+	static final int EntryOrderingIs(final Entry start, final Entry end) {
+		boolean boolPold = false;
 		boolean isFirst = true;
 		long pIdentitycode, compIdentitycode;
 		for (Entry p = start, comp = (p != null) ? p.next : null; p != null && comp != null; comp = ((p = p.next) == null) ? null : p.next) {
 			if (p == end) break;
 			if ((pIdentitycode = p.value.identityCode()) == (compIdentitycode = comp.value.identityCode())) continue;
-			//boolP = pIdentitycode < compIdentitycode;
-			if (!isFirst || (isFirst = (!isFirst))) if (boolPold ^ pIdentitycode < compIdentitycode) {
-				return -1;
-			} else {
-				continue;
-			}
+			if (!isFirst || (isFirst = (!isFirst))) if (boolPold ^ pIdentitycode < compIdentitycode) return -1;
+			else continue;
 			boolPold = pIdentitycode < compIdentitycode;
 		}
 		if (boolPold) return 1;
 		return 0;
+	}
+
+	static final boolean EntryAdd(final Entry start, final Entry end, final Entry e) {
+		if (start == null) return false;
+		//Entry f = null;
+		Entry EntryDown = EntryGetDown(start, end, e);
+		/* 未找到则 添加链表*/
+		if (EntryDown != null) EntryAddForward(EntryDown, e);
+		else {
+			if (end != null) EntryAddNext(end, e);
+			else EntryAddNext(start, e);
+		}
+		EntryDown = null;
+		return true;
+
+	}
+
+	/**
+	 * 把单元插入到EntryDown之前的位置上<br/>
+	 * @param EntryDown Entry
+	 * @param e Entry
+	 * @return Entry
+	 */
+	static final Entry EntryAddForward(final Entry EntryDown, final Entry e) {
+		if (e == null || EntryDown == null) return null;
+		/* 如果有下限值，则放入下限对象的前面(默认为从小到大的排序)*/
+		e.next = EntryDown;
+		e.forward = EntryDown.forward;
+		if (EntryDown.forward != null) EntryDown.forward.next = e;
+		EntryDown.forward = e;
+		return e;
+	}
+
+	/**
+	 * 把单元插入到EntryDown之后的位置上<br/>
+	 * @param EntryDown Entry
+	 * @param e Entry
+	 * @return Entry
+	 */
+	static final Entry EntryAddNext(final Entry EntryDown, final Entry e) {
+		if (e == null || EntryDown == null) return null;
+		/* 直接放在EntryDown尾 */
+		e.forward = EntryDown;
+		e.next = EntryDown.next;
+		if (EntryDown.next != null) EntryDown.next.forward = e;
+		EntryDown.next = e;
+		return e;
+	}
+
+	/**
+	 * 查找链表最后一位单元<br/>
+	 * @param start Entry
+	 * @return Entry
+	 */
+	static final Entry EntryEnd(final Entry start) {
+		for (Entry p = start; p != null; p = p.next)
+			if (p.next == null) return p;
+		return null;
+	}
+
+	/**
+	 * 把单元移出链表<br/>
+	 * 注意：只移出一个单元，如果出现多个相同identityCode的，则只移出第一个<br/>
+	 * @param start Entry
+	 * @param end Entry
+	 * @param delEntry Entry
+	 * @return Entry
+	 */
+	static final Entry EntryRemove(final Entry start, final Entry end, final Entry delEntry) {
+		if (start == null) return null;
+		for (Entry p = start; p != null; p = p.next) {
+			if (p == delEntry || p.value.identityCode() == delEntry.value.identityCode()) {
+				if (p.forward != null) p.forward.next = p.next;
+				if (p.next != null) p.next.forward = p.forward;
+				return p;
+			}
+			if (p == end) break;
+		}
+		return null;
 	}
 
 	@Override
