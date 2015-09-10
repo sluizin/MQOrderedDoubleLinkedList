@@ -25,14 +25,16 @@ public final class MQOrderedDoubleLinkedList {
 	 * 链表缓存(把链表截多少段)
 	 */
 	private transient Entry[] cacheEntry = new Entry[Consts.cacheLen - 1];
-	public MQOrderedDoubleLinkedList(){
-		
+
+	public MQOrderedDoubleLinkedList() {
+
 	}
+
 	/**
 	 * 转序
 	 * @return boolean
 	 */
-	public final boolean turnOrdering() {
+	public final boolean orderingTurn() {
 		if (entryStart == null || entryEnd == null || entryStart == entryEnd) return false;
 		locked();
 		try {
@@ -80,10 +82,10 @@ public final class MQOrderedDoubleLinkedList {
 				return true;
 			}
 			/* 未找到则 添加链表*/
-			addEntry(EntryDown, value);
+			privateAddEntry(EntryDown, value);
 			//showHeadEnd();
-			toString();
-			System.out.println("/////////////////////////////////////////////////////////////////////////////////////");
+			//toString();
+			//System.out.println("/////////////////////////////////////////////////////////////////////////////////////");
 			EntryDown = null;
 			return true;
 		} finally {
@@ -102,11 +104,76 @@ public final class MQOrderedDoubleLinkedList {
 		locked();
 		try {
 			/* 未找到则 添加链表*/
-			addEntry(null, value);
-			//showHeadEnd();
-			toString();
-			System.out.println("/////////////////////////////////////////////////////////////////////////////////////");
+			privateAddEntry(null, value);
 			return true;
+		} finally {
+			unLocked();
+		}
+	}
+	/**
+	 * 按标识值得到单元<br/>
+	 * @param identityCode
+	 * @return
+	 */
+	public final Entry get(final long identityCode) {
+		final boolean order = isOrdering() == 1;
+		for (Entry p = (order) ? this.entryEnd : this.entryStart; p != null && p.value.identityCode() <= identityCode; p = (order) ? p.forward : p.next)
+			if (p.value.identityCode() == identityCode) return p;
+		return null;
+	}
+
+	/**
+	 * 得到链表头<br/>
+	 * @return Entry
+	 */
+	public final Entry getFirst() {
+		return this.entryStart;
+	}
+
+	/**
+	 * 得到链表尾
+	 * @return Entry
+	 */
+	public final Entry getLast() {
+		return this.entryEnd;
+	}
+
+	public final void remove(final long identityCode) {
+		locked();
+		try {
+			for (Entry p = entryStart; p != null; p = p.next) {
+
+				if (p == this.entryEnd) break;
+			}
+		} finally {
+			unLocked();
+		}
+
+	}
+
+	/**
+	 * 删除链表头
+	 */
+	public final void removeFirst() {
+		locked();
+		try {
+			//Entry p = this.entryStart;
+			(this.entryStart = this.entryStart.next).forward = null;
+			//p = null;
+		} finally {
+			unLocked();
+		}
+	}
+
+	/**
+	 * 删除链表尾
+	 */
+	public final void removeLast() {
+		locked();
+		try {
+			//Entry p = this.entryEnd;
+			(this.entryEnd = this.entryEnd.forward).next = null;
+			//p = null;
 		} finally {
 			unLocked();
 		}
@@ -129,11 +196,87 @@ public final class MQOrderedDoubleLinkedList {
 	}
 
 	/**
+	 * 把乱序的链表顺序重置，按从小到大重新整理<br/>
+	 * @return boolean
+	 */
+	public final boolean orderingReset() {
+		if (entryStart == null) return false;
+		locked();
+		try {
+			final MQOrderedDoubleLinkedList MQdll = new MQOrderedDoubleLinkedList();
+			for (Entry p = entryStart; p != null; p = p.next)
+				MQdll.put(p.value);
+			privateShallowCopy(MQdll, this);
+			return true;
+		} finally {
+			unLocked();
+		}
+	}
+
+	/**
+	 * 判断链表段的顺序<br/>
+	 * 1:从大到小<br/>
+	 * 0:从小到大<br/>
+	 * -1:乱序<br/>
+	 * @return int
+	 */
+	public final int isOrdering() {
+		return EntryOrderingIs(entryStart, entryEnd);
+	}
+
+	/**
+	 * 浅复制链表<br/>
+	 * @return MQOrderedDoubleLinkedList
+	 */
+	@Override
+	public final MQOrderedDoubleLinkedList clone() {
+		final MQOrderedDoubleLinkedList f = new MQOrderedDoubleLinkedList();
+		f.entryStart = this.entryStart;
+		f.entryEnd = this.entryEnd;
+		f.entryCount = this.entryCount;
+		f.cacheEntry = this.cacheEntry;
+		return f;
+	}
+
+	/*
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+				Private 私有方法
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 
+	 */
+
+	/**
+	 * 浅复制链表<br/>
+	 * @param e MQOrderedDoubleLinkedList
+	 * @param f MQOrderedDoubleLinkedList
+	 */
+	private final void privateShallowCopy(final MQOrderedDoubleLinkedList e, final MQOrderedDoubleLinkedList f) {
+		f.entryStart = e.entryStart;
+		f.entryEnd = e.entryEnd;
+		f.entryCount = e.entryCount;
+		f.cacheEntry = e.cacheEntry;
+	}
+
+	/**
+	 * 链表缓存初始化
+	 */
+	private final void privateInitCache() {
+		if (entryCount > Consts.cacheCount) {
+			final int maxSize = entryCount / (Consts.cacheLen - 1);
+			if (maxSize < 1) new StringIndexOutOfBoundsException("Error:initCache()->maxSize change Consts.cacheLen !!!");
+			Entry p = entryStart;
+			for (int cacheSuffix = 0, Suffix = 0; p != null && p != entryEnd; p = p.next)
+				if (++Suffix % maxSize == 0) cacheEntry[cacheSuffix++] = p;
+		}
+	}
+
+	/**
 	 * 添加链表，有顺序
 	 * @param EntryDown Entry
 	 * @param value IoDLL
 	 */
-	private final void addEntry(final Entry EntryDown, final IoDLL value) {
+	private final void privateAddEntry(final Entry EntryDown, final IoDLL value) {
 		final Entry e = new Entry(value);
 		/*空链表时*/
 		if (entryStart == null) {
@@ -156,63 +299,6 @@ public final class MQOrderedDoubleLinkedList {
 			EntryDown.forward = e;
 		}
 		entryCount++;
-	}
-
-	/**
-	 * 把乱序的链表顺序重置，按从小到大重新整理<br/>
-	 * @return boolean
-	 */
-	public final boolean OrderingReset() {
-		if (entryStart == null) return false;
-		locked();
-		try {
-			final MQOrderedDoubleLinkedList MQdll = new MQOrderedDoubleLinkedList();
-			for (Entry p = entryStart; p != null; p = p.next)
-				MQdll.put(p.value);
-			ShallowCopy(MQdll, this);
-			return true;
-		} finally {
-			unLocked();
-		}
-	}
-
-	/**
-	 * 浅复制链表<br/>
-	 * @return MQOrderedDoubleLinkedList
-	 */
-	@Override
-	public final MQOrderedDoubleLinkedList clone() {
-		final MQOrderedDoubleLinkedList f = new MQOrderedDoubleLinkedList();
-		f.entryStart = this.entryStart;
-		f.entryEnd = this.entryEnd;
-		f.entryCount = this.entryCount;
-		f.cacheEntry = this.cacheEntry;
-		return f;
-	}
-
-	/**
-	 * 浅复制链表<br/>
-	 * @param e MQOrderedDoubleLinkedList
-	 * @param f MQOrderedDoubleLinkedList
-	 */
-	private final void ShallowCopy(final MQOrderedDoubleLinkedList e, final MQOrderedDoubleLinkedList f) {
-		f.entryStart = e.entryStart;
-		f.entryEnd = e.entryEnd;
-		f.entryCount = e.entryCount;
-		f.cacheEntry = e.cacheEntry;
-	}
-
-	/**
-	 * 链表缓存初始化
-	 */
-	private final void initCache() {
-		if (entryCount > Consts.cacheCount) {
-			final int maxSize = entryCount / (Consts.cacheLen - 1);
-			if (maxSize < 1) new StringIndexOutOfBoundsException("Error:initCache()->maxSize change Consts.cacheLen !!!");
-			Entry p = entryStart;
-			for (int cacheSuffix = 0, Suffix = 0; p != null && p != entryEnd; p = p.next)
-				if (++Suffix % maxSize == 0) cacheEntry[cacheSuffix++] = p;
-		}
 	}
 
 	/*
@@ -250,9 +336,8 @@ public final class MQOrderedDoubleLinkedList {
 	}
 
 	static final Entry EntrySearch(final IoDLL value, final Entry entryStart) {
-		for (Entry p = entryStart; p != null && p.value != null && p.value.identityCode() <= value.identityCode(); p = p.forward) {
+		for (Entry p = entryStart; p != null && p.value != null && p.value.identityCode() <= value.identityCode(); p = p.forward)
 			if (p.value != null && (p.value == value || p.value.equals(value))) return p;
-		}
 		return null;
 	}
 
@@ -317,14 +402,10 @@ public final class MQOrderedDoubleLinkedList {
 		return null;
 	}
 
-	public final int isOrdering() {
-		return EntryOrderingIs(entryStart, entryEnd);
-	}
-
 	/**
 	 * 判断链表段的顺序<br/>
-	 * 1:从小到大<br/>
-	 * 0:从大到小<br/>
+	 * 1:从大到小<br/>
+	 * 0:从小到大<br/>
 	 * -1:乱序<br/>
 	 * @param start Entry
 	 * @param end Entry
@@ -341,8 +422,8 @@ public final class MQOrderedDoubleLinkedList {
 			else continue;
 			boolPold = pIdentitycode < compIdentitycode;
 		}
-		if (boolPold) return 1;
-		return 0;
+		if (boolPold) return 0;
+		return 1;
 	}
 
 	static final boolean EntryAdd(final Entry start, final Entry end, final Entry e) {
@@ -351,13 +432,10 @@ public final class MQOrderedDoubleLinkedList {
 		Entry EntryDown = EntryGetDown(start, end, e);
 		/* 未找到则 添加链表*/
 		if (EntryDown != null) EntryAddForward(EntryDown, e);
-		else {
-			if (end != null) EntryAddNext(end, e);
-			else EntryAddNext(start, e);
-		}
+		else if (end != null) EntryAddNext(end, e);
+		else EntryAddNext(start, e);
 		EntryDown = null;
 		return true;
-
 	}
 
 	/**
@@ -426,12 +504,12 @@ public final class MQOrderedDoubleLinkedList {
 
 	@Override
 	public String toString() {
-		initCache();
+		privateInitCache();
 		System.out.println("====================================");
 		System.out.println("entryCount:" + entryCount);
 		int ii = 1;
 		for (Entry p = entryStart; p != null; p = p.next)
-			entryView(ii++, p);
+			showEntryView(ii++, p);
 		System.out.println();
 		System.out.println("orderIng:" + isOrdering());
 		System.out.println("====================================");
@@ -447,21 +525,21 @@ public final class MQOrderedDoubleLinkedList {
 	public void showHeadEnd() {
 		System.out.println("----------");
 		System.out.print("entryStart:");
-		entryView(entryStart);
+		showEntryView(entryStart);
 		System.out.println();
 		System.out.print("entryEnd:");
-		entryView(entryEnd);
+		showEntryView(entryEnd);
 		System.out.println();
 		System.out.println("----------");
 	}
 
-	public void entryView(final Entry p) {
+	public void showEntryView(final Entry p) {
 		if (p == null) return;
 		System.out.print("[" + p.value.identityCode());
 		System.out.print("]{" + p.value.identityName() + "} ");
 	}
 
-	public void entryView(final int i, final Entry p) {
+	public void showEntryView(final int i, final Entry p) {
 		if (p == null) return;
 		System.out.print("(" + i + ")[" + p.value.identityCode());
 		System.out.print("]{" + p.value.identityName() + "} ");
@@ -471,9 +549,15 @@ public final class MQOrderedDoubleLinkedList {
 	 * 对象单元
 	 * @author Sunjian
 	 */
-	static final class Entry {
+	private static final class Entry {
+		/**
+		 * 链表前端单元
+		 */
 		Entry forward;
 		IoDLL value;
+		/**
+		 * 链表后端单元
+		 */
 		Entry next;
 
 		/**

@@ -26,13 +26,15 @@ public class test {
 		odll2.put(new user("user107",107));
 		odll2.put(new user("user105",105));
 		odll2.put(new user("user102",102));
+		odll2.put(new user("user117",104));
 		odll2.put(new user("user10333",103));
 		//odll2.Ordering();
 		odll2.toString();
 		odll2.putFast(new user("user121",121));
 		odll2.putFast(new user("user120",120));
 		odll2.putFast(new user("user119",119));
-		odll2.OrderingReset();
+		odll2.toString();
+		odll2.orderingReset();
 		odll2.toString();
 		//odll2.toString();
 		//odll.Ordering();
