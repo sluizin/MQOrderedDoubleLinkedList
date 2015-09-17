@@ -38,6 +38,37 @@ public final class Consts {
 	}
 
 	/**
+	 * Consts.sequence.Reverse:从大到小<br/>
+	 * Consts.sequence.Ordering:从小到大<br/>
+	 * Consts.sequence.Outoforder:乱序<br/>
+	 * @author Sunjian<br/>
+	 */
+	static enum sequence {
+		/**
+		 * 倒序
+		 */
+		Reverse(1),
+		/**
+		 * 顺序
+		 */
+		Ordering(0),
+		/**
+		 * 乱序
+		 */
+		Outoforder(-1);
+		int value;
+
+		private sequence(final int value) {
+			this.value = value;
+		}
+
+		@Override
+		public String toString() {
+			return this.name() + ":" + this.ordinal();
+		}
+	}
+
+	/**
 	 * boolean的状态:<br/>
 	 * False(0):假<br/>
 	 * True(1):真<br/>

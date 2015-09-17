@@ -8,7 +8,7 @@ import MaQiao.MaQiaoOrderedDoubleLinkedList.MQOrderedDoubleLinkedList;
 
 public class test {
 
-	@SuppressWarnings({ "deprecation" })
+	@SuppressWarnings({ "deprecation", "unused" })
 	@Test
 	public void testuser() {
 		//MQOrderedDoubleLinkedList odll=new MQOrderedDoubleLinkedList();
@@ -19,23 +19,46 @@ public class test {
 //			odll.put(u);
 //		}
 //		odll.toString();
-		MQOrderedDoubleLinkedList odll2=new MQOrderedDoubleLinkedList();
-		odll2.put(new user("user103",103));
-		odll2.put(new user("user104",104));
-		odll2.put(new user("user101",101));
-		odll2.put(new user("user107",107));
-		odll2.put(new user("user105",105));
-		odll2.put(new user("user102",102));
-		odll2.put(new user("user117",104));
-		odll2.put(new user("user10333",103));
-		//odll2.Ordering();
-		odll2.toString();
-		odll2.putFast(new user("user121",121));
-		odll2.putFast(new user("user120",120));
-		odll2.putFast(new user("user119",119));
-		odll2.toString();
-		odll2.orderingReset();
-		odll2.toString();
+		if(1==0){
+
+			MQOrderedDoubleLinkedList odll2=new MQOrderedDoubleLinkedList();
+			odll2.put(new user("user103",103));
+			odll2.put(new user("user104",104));
+			odll2.put(new user("user101",101));
+			odll2.put(new user("user107",107));
+			odll2.put(new user("user105",105));
+			odll2.put(new user("user102",102));
+			odll2.put(new user("user117",104));
+			odll2.put(new user("user10333",103));
+			//odll2.Ordering();
+			odll2.toString();
+			odll2.putFast(new user("user121",121));
+			odll2.putFast(new user("user120",120));
+			odll2.putFast(new user("user119",119));
+			odll2.toString();
+			odll2.orderingReset();
+			odll2.toString();
+		}
+		{
+			MQOrderedDoubleLinkedList odll2=new MQOrderedDoubleLinkedList();
+			odll2.stackPush(new user("user104",104));
+			System.out.println("pop:"+odll2.stackLength());
+			odll2.stackPush(new user("user106",106));
+			System.out.println("pop:"+odll2.stackLength());
+			odll2.stackPush(new user("user103",103));
+			System.out.println("pop:"+odll2.stackLength());
+			odll2.stackPush(new user("user102",102));
+			System.out.println("pop:"+odll2.stackLength());
+			System.out.println("pop:"+odll2.stackPop().toString());
+			System.out.println("pop:"+odll2.stackLength());
+			System.out.println("pop:"+odll2.stackPop().toString());
+			System.out.println("pop:"+odll2.stackLength());
+			System.out.println("pop:"+odll2.stackPop().toString());
+			System.out.println("pop:"+odll2.stackLength());
+			System.out.println("pop:"+odll2.stackPop().toString());
+			System.out.println("pop:"+odll2.stackLength());
+			
+		}
 		//odll2.toString();
 		//odll.Ordering();
 		//odll.toString();
@@ -58,6 +81,11 @@ public class test {
 		@Override
 		public long identityCode() {
 			return identityCode;
+		}
+
+		@Override
+		public String toString() {
+			return "user [identityCode=" + identityCode + ", identityName=" + identityName + "]";
 		}
 
 	}

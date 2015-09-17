@@ -2,10 +2,10 @@ package MaQiao.MaQiaoOrderedDoubleLinkedList;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import MaQiao.Constants.Constants;
 import MaQiao.MaQiaoOrderedDoubleLinkedList.Consts;
-import MaQiao.MaQiaoOrderedDoubleLinkedList.Consts.booleanType;
+import static MaQiao.MaQiaoOrderedDoubleLinkedList.Consts.booleanType;
+import static MaQiao.MaQiaoOrderedDoubleLinkedList.Consts.sequence;
 
 /**
  * 有序两端双向链表
@@ -34,7 +34,7 @@ public final class MQOrderedDoubleLinkedList {
 	}
 
 	/**
-	 * 转序
+	 * 转序(有锁)<br/>
 	 * @return boolean
 	 */
 	public final boolean orderingTurn() {
@@ -69,7 +69,7 @@ public final class MQOrderedDoubleLinkedList {
 	}
 
 	/**
-	 * 添加单元，手动决定是否覆盖<br/>
+	 * 添加单元，手动决定是否覆盖(有锁)<br/>
 	 * @param value IoDLL
 	 * @param isCover boolean
 	 * @return boolean
@@ -98,7 +98,7 @@ public final class MQOrderedDoubleLinkedList {
 	}
 
 	/**
-	 * 添加单元，直接在链表后面加入单元<br/>
+	 * 添加单元，直接在链表后面加入单元(有锁)<br/>
 	 * @param value IoDLL
 	 * @return boolean
 	 */
@@ -233,7 +233,7 @@ public final class MQOrderedDoubleLinkedList {
 	}
 
 	/**
-	 * 按标识值移除单元
+	 * 按标识值移除单元(有锁)<br/>
 	 * @param identityCode
 	 */
 	public final boolean remove(final long identityCode) {
@@ -264,7 +264,7 @@ public final class MQOrderedDoubleLinkedList {
 	}
 
 	/**
-	 * 移除链表头
+	 * 移除链表头(有锁)<br/>
 	 */
 	public final boolean removeFirst() {
 		locked();
@@ -278,7 +278,7 @@ public final class MQOrderedDoubleLinkedList {
 	}
 
 	/**
-	 * 移除链表尾<br/>
+	 * 移除链表尾(有锁)<br/>
 	 * @return boolean
 	 */
 	public final boolean removeLast() {
@@ -294,7 +294,7 @@ public final class MQOrderedDoubleLinkedList {
 
 	//TODO contains 判断是否存在
 	/**
-	 * 判断接口是否存在，以标识数为标准
+	 * 判断接口是否存在，以标识数为标准(有锁)<br/>
 	 * @param value IoDLL
 	 * @param eStart Entry
 	 * @param eEnd Entry
@@ -310,7 +310,7 @@ public final class MQOrderedDoubleLinkedList {
 	}
 
 	/**
-	 * 把乱序的链表顺序重置，按从小到大重新整理<br/>
+	 * 把乱序的链表顺序重置，按从小到大重新整理(有锁)<br/>
 	 * @return boolean
 	 */
 	public final boolean orderingReset() {
@@ -375,6 +375,132 @@ public final class MQOrderedDoubleLinkedList {
 		if (entryCount > 0) for (Entry p = entryStart; p != null; p = p.next)
 			newList.add(p.value);
 		return newList;
+	}
+
+	/**
+	 * 清空链表(有锁)<br/>
+	 */
+	public final void clear() {
+		locked();
+		try {
+			for (Entry p = entryStart; p != null; p = p.next) {
+				p.value = null;
+				p.forward = null;
+			}
+			this.entryStart = this.entryEnd = null;
+			this.entryCount = 0;
+			for (int i = 0, len = this.cacheEntry.length; i < len; i++)
+				this.cacheEntry[i] = null;
+		} finally {
+			unLocked();
+		}
+
+	}
+
+	/*
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+				压栈，弹栈
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 
+	 */
+	/**
+	 * 压栈(有锁)<br/>
+	 * 忽略顺序<br/>
+	 * @param value IoDLL
+	 * @return boolean
+	 */
+	public final boolean stackPush(final IoDLL value) {
+		if (value == null) return false;
+		locked();
+		try {
+			/* 未找到则 添加链表*/
+			privateAddEntry(this.entryStart, value);
+			return true;
+		} finally {
+			unLocked();
+		}
+	}
+
+	/**
+	 * 弹栈(有锁)<br/>
+	 * 忽略顺序<br/>
+	 * @param value IoDLL
+	 * @return IoDLL
+	 */
+	public final IoDLL stackPop() {
+		if (this.entryStart == null) return null;
+		locked();
+		try {
+			Entry e = this.entryStart;
+			IoDLL f = e.value;
+			this.entryStart = this.entryStart.next;
+			if (this.entryStart != null && this.entryStart.forward != null) this.entryStart.forward = null;
+			if (this.entryEnd == e) this.entryEnd = null;
+			this.entryCount--;
+			return f;
+		} finally {
+			unLocked();
+		}
+	}
+
+	/**
+	 * 栈长<br/>
+	 * @return int
+	 */
+	public final int stackLength() {
+		return this.entryCount;
+	}
+
+	/**
+	 * 清空栈表<br/>
+	 */
+	public final void stackClear() {
+		clear();
+	}
+
+	/*
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+				队列
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 
+	 */
+	/**
+	 * 队列添加(有锁)<br/>
+	 * @param value IoDLL
+	 * @return boolean
+	 */
+	public final boolean queueAdd(final IoDLL value) {
+		if (value == null) return false;
+		locked();
+		try {
+			privateAddEntry(null, value);
+			return true;
+		} finally {
+			unLocked();
+		}
+	}
+
+	/**
+	 * 移除队列中排序第num的单元<br/>
+	 * @param num int
+	 * @return boolean
+	 */
+	public final boolean queueRemove(final int num) {
+		if (this.entryStart == null) return false;
+		return remove(num, false);
+	}
+
+	/**
+	 * 移除并返问队列头部的元素<br/>
+	 * @return IoDLL
+	 */
+	public final IoDLL queuePoll() {
+		final Entry e = this.entryStart;
+		this.entryStart = this.entryStart.next;
+		if (this.entryEnd == e) this.entryEnd = null;
+		return e.value;
 	}
 
 	/*
@@ -543,6 +669,29 @@ public final class MQOrderedDoubleLinkedList {
 
 	/**
 	 * 判断链表段的顺序<br/>
+	 * Consts.sequence.Reverse:从大到小<br/>
+	 * Consts.sequence.Ordering:从小到大<br/>
+	 * Consts.sequence.Outoforder:乱序<br/>
+	 * @param start Entry
+	 * @param end Entry
+	 * @return Consts.sequence
+	 */
+	static final sequence EntrySequence(final Entry start, final Entry end) {
+		boolean boolPold = false, isFirst = true;
+		long code1, code2;
+		for (Entry p = start, comp = (p != null) ? p.next : null; p != null && comp != null; comp = ((p = p.next) == null) ? null : p.next) {
+			if (p == end) break;
+			if ((code1 = p.value.identityCode()) == (code2 = comp.value.identityCode())) continue;
+			if (!isFirst || (isFirst = (!isFirst))) if (boolPold ^ code1 < code2) return sequence.Outoforder;
+			else continue;
+			boolPold = code1 < code2;
+		}
+		if (boolPold) return sequence.Ordering;
+		return sequence.Reverse;
+	}
+
+	/**
+	 * 判断链表段的顺序<br/>
 	 * 1:从大到小<br/>
 	 * 0:从小到大<br/>
 	 * -1:乱序<br/>
@@ -551,18 +700,7 @@ public final class MQOrderedDoubleLinkedList {
 	 * @return int
 	 */
 	static final int EntryOrderingIs(final Entry start, final Entry end) {
-		boolean boolPold = false;
-		boolean isFirst = true;
-		long pIdentitycode, compIdentitycode;
-		for (Entry p = start, comp = (p != null) ? p.next : null; p != null && comp != null; comp = ((p = p.next) == null) ? null : p.next) {
-			if (p == end) break;
-			if ((pIdentitycode = p.value.identityCode()) == (compIdentitycode = comp.value.identityCode())) continue;
-			if (!isFirst || (isFirst = (!isFirst))) if (boolPold ^ pIdentitycode < compIdentitycode) return -1;
-			else continue;
-			boolPold = pIdentitycode < compIdentitycode;
-		}
-		if (boolPold) return 0;
-		return 1;
+		return EntrySequence(start, end).value;
 	}
 
 	static final boolean EntryAdd(final Entry start, final Entry end, final Entry e) {
